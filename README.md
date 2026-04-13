@@ -12,7 +12,7 @@ Conçu pour la sérigraphie, la gravure, la risographie et toute technique d'imp
 
 Aucune installation requise. Le logiciel fonctionne entièrement dans le navigateur.
 
-1. Télécharger le fichier `outil_trames_v1.html`
+1. Télécharger le fichier `outil_trames_v1.1.html`
 2. L'ouvrir dans Chrome, Firefox ou Edge
 3. **Passer en plein écran** (F11 sur Windows/Linux, Cmd+Ctrl+F sur Mac) — l'interface est conçue pour fonctionner en plein écran
 
