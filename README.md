@@ -1,6 +1,6 @@
 # Outil Trames
 
-**Tramage par lignes dirigées — application web autonome**
+**Tramage par hachures — application web autonome**
 
 Outil Trames convertit une image source en un réseau de hachures dont la densité et la direction reproduisent les valeurs tonales de l'original. Le résultat est exportable en SVG vectoriel multi-calques compatible Inkscape, ou en PNG.
 
