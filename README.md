@@ -16,7 +16,7 @@ Aucune installation requise. Le logiciel fonctionne entièrement dans le navigat
 2. L'ouvrir dans Chrome, Firefox ou Edge
 3. **Passer en plein écran** (F11 sur Windows/Linux, Cmd+Ctrl+F sur Mac) — l'interface est conçue pour fonctionner en plein écran
 
-➡️ [Ouvrir en ligne]([https://rossignol-martial.github.io/outil-trames/outil_trames_v1.html]) 
+➡️ [Ouvrir en ligne](https://rossignol-martial.github.io/outil-trames/outil_trames_v1.html)
 
 ---
 
