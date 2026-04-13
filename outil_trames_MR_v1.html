@@ -1,0 +1,2169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+  <meta name="author" content="Martial Rossignol">
+  <meta name="description" content="Outil de tramage par lignes dirigées, basé sur un algorithme de Jean-Noël Lafargue.">
+  <meta name="license" content="CC BY-NC-SA 4.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outil Trames</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg      : #f0ece4;
+  --dark    : #1a1a18;
+  --text    : #e8e4dc;
+  --muted   : #7a7870;
+  --sep     : #2c2c2a;
+  --sep2    : #1e1e1c;
+  --accent  : #c8401a;
+  --accent-h: #e05228;
+  --blue    : #3a5a8c;
+  --blue-h  : #4a6aaa;
+  --line    : #2a2a26;
+  --col-w   : 180px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 180px 180px 1fr 180px;
+  grid-template-rows: 100vh;
+}
+
+/* ══ COLONNES ══ */
+.sidebar {
+  background: var(--dark);
+  display: flex; flex-direction: column;
+  height: 100vh; overflow: hidden;
+}
+.col-header {
+  padding: 14px 14px 11px;
+  border-bottom: 1px solid var(--sep);
+  flex-shrink: 0;
+}
+.credit {
+  font-size: 7px; letter-spacing: 0.08em; color: #3a3a38;
+  margin-top: 3px; text-transform: uppercase;
+}
+.licence { color: #2a4a2a; }
+.col-header h2 {
+  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #fff;
+}
+.col-header p {
+  font-size: 7.5px; color: var(--muted); margin-top: 3px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.col-body {
+  flex: 1; display: flex; flex-direction: column;
+  padding: 10px 11px; overflow: hidden; min-height: 0;
+}
+
+/* ══ FORM ══ */
+.sect {
+  font-size: 7px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: #3e3e3c; margin-bottom: 8px; padding-bottom: 4px;
+  border-bottom: 1px solid var(--sep); flex-shrink: 0;
+}
+.ctrl { margin-bottom: 10px; flex-shrink: 0; }
+.lbl {
+  font-size: 7.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 4px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.lbl-val { color: var(--accent); font-size: 9px; letter-spacing: 0; font-weight: 500; }
+
+/* ── slider avec +/- ── */
+.slider-row {
+  display: flex; align-items: center; gap: 4px;
+}
+.slider-btn {
+  flex-shrink: 0;
+  width: 16px; height: 16px;
+  background: #252523; border: 1px solid #3a3a38;
+  color: var(--muted); font-size: 13px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: color 0.1s, border-color 0.1s;
+  user-select: none;
+  padding: 0;
+}
+.slider-btn:hover { color: var(--text); border-color: #555; }
+.slider-btn:active { background: #1a1a18; }
+
+input[type=range] {
+  -webkit-appearance: none;
+  flex: 1; height: 2px;
+  background: #333330; outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px; height: 10px;
+  background: var(--accent); border-radius: 0; cursor: pointer;
+  transition: background 0.1s;
+}
+input[type=range]:hover::-webkit-slider-thumb { background: var(--accent-h); }
+
+select {
+  width: 100%; background: #252523; color: var(--text);
+  border: 1px solid #333330; font-family: 'DM Mono', monospace;
+  font-size: 8px; padding: 4px 22px 4px 7px;
+  cursor: pointer; outline: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%237a7870'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 7px center;
+}
+select:hover { border-color: #555; }
+
+.vsep { height: 1px; background: var(--sep); margin: 10px 0; flex-shrink: 0; }
+
+/* ── boutons ── */
+.btn {
+  display: flex; align-items: center; gap: 7px; width: 100%;
+  padding: 9px 11px; font-family: 'DM Mono', monospace;
+  font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  border: none; cursor: pointer; transition: background 0.12s, color 0.12s;
+  margin-bottom: 5px; color: #fff; flex-shrink: 0;
+}
+.btn:last-child { margin-bottom: 0; }
+.btn-icon { font-size: 12px; opacity: 0.85; flex-shrink: 0; }
+.btn-primary   { background: var(--accent); }
+.btn-primary:hover { background: var(--accent-h); }
+.btn-secondary { background: var(--blue); }
+.btn-secondary:hover { background: var(--blue-h); }
+.btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--sep); }
+.btn-ghost:hover { color: var(--text); border-color: #555; }
+.btn-fs {
+  background: #1a2a1a; color: #7ab07a;
+  border: 1px solid #3a5a3a;
+  position: relative;
+}
+.btn-fs:hover { background: #243024; border-color: #4a7a4a; }
+.btn-fs.active { background: #2a1a1a; color: #c8401a; border-color: #5a3a3a; }
+.btn-fs.active:hover { background: #3a2020; }
+
+/* Bouton animé tant que pas en plein écran */
+.btn-fs.pulse {
+  animation: fsPulse 2s ease-in-out infinite;
+  border-color: #7ab07a;
+  box-shadow: 0 0 0 0 rgba(122,176,122,0.4);
+}
+@keyframes fsPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(122,176,122,0.5); }
+  50%  { box-shadow: 0 0 0 5px rgba(122,176,122,0); }
+  100% { box-shadow: 0 0 0 0 rgba(122,176,122,0); }
+}
+
+
+
+
+/* ── boutons json export/import ── */
+.json-btns {
+  display: flex; flex-direction: column; gap: 4px;
+  flex-shrink: 0;
+}
+.btn-json {
+  width: 100%; padding: 8px 10px;
+  font-family: 'DM Mono', monospace; font-size: 8px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  border: 1px solid var(--sep); background: #252523;
+  color: var(--muted); cursor: pointer;
+  transition: color 0.1s, border-color 0.1s;
+  text-align: left;
+}
+.btn-json:hover { color: var(--text); border-color: #555; }
+.btn-json-load { border-color: #2a3a2a; color: #5a8c5a; }
+.btn-json-load:hover { border-color: #3a6a3a; color: #7ab07a; }
+
+/* ── boutons json compacts sur une ligne ── */
+.json-btns-row {
+  display: flex; gap: 4px; flex-shrink: 0; margin-bottom: 0;
+}
+.btn-json-sm {
+  flex: 1; padding: 6px 4px;
+  font-family: 'DM Mono', monospace; font-size: 8px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid var(--sep); background: #252523;
+  color: var(--muted); cursor: pointer;
+  transition: color 0.1s, border-color 0.1s;
+  text-align: center;
+}
+.btn-json-sm:hover { color: var(--text); border-color: #555; }
+.btn-json-load-sm { border-color: #2a3a2a; color: #5a8c5a; }
+.btn-json-load-sm:hover { border-color: #3a6a3a; color: #7ab07a; }
+
+/* ── justification ── */
+.just-group {
+  display: flex; gap: 4px; margin-top: 6px;
+}
+.just-btn {
+  flex: 1; padding: 5px 0;
+  background: #252523; border: 1px solid #333330;
+  color: var(--muted); font-size: 9px; cursor: pointer;
+  transition: all 0.1s; display: flex; align-items: center; justify-content: center;
+}
+.just-btn:hover { border-color: #555; color: var(--text); }
+.just-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+/* ── miniature colonne gauche (supprimée) ── */
+
+/* ── crop popup modal ── */
+#crop-modal {
+  display: none;
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(10,10,8,0.92);
+  flex-direction: column;
+  align-items: center; justify-content: center;
+}
+#crop-modal.open { display: flex; }
+
+#crop-modal-inner {
+  position: relative;
+  display: flex; flex-direction: column;
+  width: 90vw; height: 88vh;
+  max-width: 1400px;
+  background: #0e0e0c;
+  border: 1px solid #333;
+  overflow: hidden;
+}
+
+#crop-modal-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: #1a1a18;
+  border-bottom: 1px solid #2a2a28;
+  flex-shrink: 0;
+}
+#crop-modal-toolbar .crop-title {
+  font-family: 'Syne', sans-serif; font-weight: 700;
+  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: #fff; margin-right: 10px;
+}
+.crop-ratio-btn {
+  padding: 4px 10px;
+  font-family: 'DM Mono', monospace; font-size: 8px;
+  letter-spacing: 0.08em;
+  background: #252523; border: 1px solid #3a3a38;
+  color: var(--muted); cursor: pointer; transition: all 0.1s;
+}
+.crop-ratio-btn:hover { color: var(--text); border-color: #555; }
+.crop-ratio-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+.crop-spacer { flex: 1; }
+
+.crop-modal-btn {
+  padding: 6px 16px;
+  font-family: 'DM Mono', monospace; font-size: 8.5px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  border: none; cursor: pointer; transition: background 0.1s;
+}
+.crop-modal-cancel { background: #2a2a28; color: var(--muted); }
+.crop-modal-cancel:hover { color: var(--text); }
+.crop-modal-apply  { background: var(--blue); color: #fff; }
+.crop-modal-apply:hover  { background: var(--blue-h); }
+.crop-modal-reset  { background: transparent; color: var(--accent); border: 1px solid #3a2020; }
+.crop-modal-reset:hover  { background: #2a1818; }
+
+#crop-modal-canvas-wrap {
+  flex: 1; position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: #0e0e0c;
+}
+#crop-modal-img {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+  user-select: none; pointer-events: none;
+  display: block;
+}
+#crop-modal-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  cursor: crosshair; touch-action: none;
+}
+#crop-modal-info {
+  position: absolute; bottom: 8px; right: 12px;
+  font-size: 8px; letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.4); pointer-events: none;
+}
+
+/* ── crop thumbnail dans col prétraitement (miniature + indicateur) ── */
+#crop-wrap {
+  height: 120px; flex-shrink: 0;
+  border: 1px solid var(--sep); background: #0e0e0c;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden; margin-bottom: 6px;
+  cursor: pointer;
+}
+#crop-wrap:hover { border-color: #555; }
+#crop-img-src {
+  max-width: 100%; max-height: 100%; object-fit: contain;
+  display: none; pointer-events: none;
+}
+#crop-img-src.show { display: block; }
+#crop-overlay-indicator {
+  position: absolute; inset: 0; pointer-events: none;
+}
+#crop-placeholder {
+  font-size: 7.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #2e2e2c;
+}
+#crop-placeholder.hidden { display: none; }
+.crop-btns {
+  display: none; flex-direction: column; gap: 4px;
+  margin-bottom: 6px; flex-shrink: 0;
+}
+.crop-btns.show { display: flex; }
+.btn-crop {
+  width: 100%; padding: 7px 10px;
+  font-family: 'DM Mono', monospace; font-size: 8px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  border: none; cursor: pointer; text-align: left;
+}
+.btn-crop-enter { background: #2a3a20; color: #7ab07a; border: 1px solid #3a5a2a; }
+.btn-crop-enter:hover { background: #3a4a28; }
+.btn-crop-reset { background: transparent; color: var(--muted); border: 1px solid var(--sep); }
+.btn-crop-reset:hover { color: var(--text); }
+#thumb-placeholder {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 5px; padding: 10px; text-align: center;
+}
+#thumb-placeholder.hidden { display: none; }
+#thumb-placeholder .ph-icon { font-size: 22px; opacity: 0.12; }
+#thumb-placeholder .ph-txt {
+  font-size: 7px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); opacity: 0.45; line-height: 1.5;
+}
+#file-info {
+  font-size: 7px; color: var(--muted); letter-spacing: 0.05em;
+  line-height: 1.6; margin-bottom: 10px; flex-shrink: 0; min-height: 24px;
+}
+
+/* ══ CALQUES colonne droite ══ */
+#calques-wrap {
+  flex: 1; display: flex; flex-direction: column;
+  min-height: 0; overflow: hidden;
+}
+#calques-legend {
+  flex: 1; overflow: hidden; min-height: 0;
+}
+.cl-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 2px; border-bottom: 1px solid var(--sep2);
+  cursor: pointer; user-select: none; transition: opacity 0.15s;
+}
+.cl-row:last-child { border-bottom: none; }
+.cl-row:hover { background: rgba(255,255,255,0.025); }
+/* Pas d'opacité globale sur la ligne — seul l'œil change */
+
+/* œil SVG inline */
+.eye-btn {
+  flex-shrink: 0; width: 16px; height: 16px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); transition: color 0.12s;
+}
+.cl-row.off .eye-btn { color: #3a3a38; }
+.eye-svg { width: 14px; height: 10px; }
+
+.cl-swatch { flex-shrink: 0; width: 14px; height: 2px; }
+.cl-lbl { font-size: 7.5px; letter-spacing: 0.05em; color: var(--muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-count { font-size: 6.5px; color: #3e3e3c; flex-shrink: 0; }
+
+/* ══ CENTRALE ══ */
+#main {
+  position: relative; overflow: hidden;
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(200,64,26,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(58,90,140,0.04) 0%, transparent 60%),
+    var(--bg);
+  cursor: grab;
+}
+#main:active { cursor: grabbing; }
+#main::before {
+  content:''; position: absolute; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; opacity: 0.6;
+}
+body.drag-over #main { outline: 2px dashed var(--accent); outline-offset: -10px; }
+
+#drop-zone {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px;
+  pointer-events: none; transition: opacity 0.3s;
+}
+#drop-zone.hidden { opacity: 0; }
+.dz-icon { width: 56px; height: 56px; border: 2px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 24px; opacity: 0.2; }
+.dz-txt { font-family:'Syne',sans-serif; font-size:12px; font-weight:700; letter-spacing:0.08em; opacity:0.22; text-transform:uppercase; color:var(--line); }
+.dz-sub { font-size:7.5px; letter-spacing:0.1em; opacity:0.16; text-transform:uppercase; color:var(--line); }
+
+#viewport {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  transform-origin: center center; will-change: transform;
+}
+#canvas-wrap { position: relative; flex-shrink: 0; }
+canvas { display: block; box-shadow: 0 8px 40px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.1); }
+
+#spinner {
+  position: absolute; inset: 0; z-index: 5;
+  background: rgba(240,236,228,0.88);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+#spinner.visible { opacity: 1; pointer-events: all; }
+.spin-ring {
+  width: 26px; height: 26px; border: 2px solid #ccc; border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin-txt { font-size: 7.5px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+
+#status {
+  position: absolute; bottom: 11px; left: 50%; transform: translateX(-50%); z-index: 10;
+  font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); background: rgba(240,236,228,0.9);
+  padding: 3px 12px; white-space: nowrap;
+  opacity: 0; transition: opacity 0.4s; pointer-events: none;
+}
+#status.show { opacity: 1; }
+#zoom-hud {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10;
+  font-size: 7.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted); background: rgba(240,236,228,0.85);
+  padding: 3px 11px; opacity: 0; transition: opacity 0.35s; pointer-events: none;
+}
+#zoom-hud.show { opacity: 1; }
+input[type=file] { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ══ COLONNE GAUCHE ══ -->
+<aside class="sidebar">
+  <div class="col-header">
+    <h2>Outil Trames</h2>
+    <p>Tramage par lignes</p>
+    <p class="credit">Martial Rossignol</p>
+    <p class="credit">Algo. J.-N. Lafargue</p>
+    <p class="credit licence">CC BY-NC-SA 4.0</p>
+  </div>
+  <div class="col-body">
+
+    <button class="btn btn-fs" id="btn-fullscreen"><span class="btn-icon" id="fs-icon">⛶</span><span id="fs-label">Plein écran</span></button>
+
+    <button class="btn btn-primary" id="btn-open"><span class="btn-icon">⊕</span>Ouvrir image</button>
+    <div id="file-info" style="margin-top:6px">—</div>
+
+    <div class="vsep"></div>
+
+    <div class="sect">Format de sortie</div>
+    <div class="ctrl">
+      <div class="lbl">Série</div>
+      <select id="s-serie"><option value="A">Série A</option><option value="B">Série B</option><option value="C">Série C</option></select>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Numéro <span class="lbl-val" id="v-format">A3 297×420</span></div>
+      <select id="s-format"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Orientation</div>
+      <select id="s-orient"><option value="portrait">Portrait</option><option value="landscape">Paysage</option></select>
+    </div>
+
+    <div class="vsep"></div>
+
+    <div class="sect">Mise en page</div>
+    <div class="ctrl">
+      <div class="lbl">Marge blanche <span class="lbl-val" id="v-marge">10 mm</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-marge" data-dir="-1">−</button>
+        <input type="range" id="s-marge" min="0" max="50" step="1" value="10">
+        <button class="slider-btn" data-target="s-marge" data-dir="1">+</button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Épais. cadre <span class="lbl-val" id="v-cadre">1.0 mm</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-cadre" data-dir="-1">−</button>
+        <input type="range" id="s-cadre" min="0" max="10" step="0.5" value="1">
+        <button class="slider-btn" data-target="s-cadre" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="lbl">Zone cible <span class="lbl-val" id="v-zone-cible">Pleine page</span></div>
+      <select id="s-zone-cible">
+        <option value="full">Pleine page</option>
+        <option value="half-w">½ largeur</option>
+        <option value="half-h">½ hauteur</option>
+        <option value="A0">A0</option>
+        <option value="A1">A1</option>
+        <option value="A2">A2</option>
+        <option value="A3">A3</option>
+        <option value="A4">A4</option>
+        <option value="A5">A5</option>
+        <option value="A6">A6</option>
+        <option value="B0">B0</option>
+        <option value="B1">B1</option>
+        <option value="B2">B2</option>
+        <option value="B3">B3</option>
+        <option value="B4">B4</option>
+        <option value="B5">B5</option>
+        <option value="B6">B6</option>
+        <option value="C0">C0</option>
+        <option value="C1">C1</option>
+        <option value="C2">C2</option>
+        <option value="C3">C3</option>
+        <option value="C4">C4</option>
+        <option value="C5">C5</option>
+        <option value="C6">C6</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Position H</div>
+      <div class="just-group" id="just-h-group">
+        <button class="just-btn" data-val="left"   title="Gauche">⇤</button>
+        <button class="just-btn active" data-val="center" title="Centre">⇔</button>
+        <button class="just-btn" data-val="right"  title="Droite">⇥</button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Position V</div>
+      <div class="just-group" id="just-v-group">
+        <button class="just-btn" data-val="top"    title="Haut">⇡</button>
+        <button class="just-btn active" data-val="middle" title="Milieu">⇕</button>
+        <button class="just-btn" data-val="bottom" title="Bas">⇣</button>
+      </div>
+    </div>
+
+
+    <div class="vsep"></div>
+
+    <button class="btn btn-secondary" id="btn-export"><span class="btn-icon">↓</span>Exporter SVG</button>
+    <button class="btn btn-ghost" id="btn-export-png"><span class="btn-icon">↓</span>Exporter PNG</button>
+    <button class="btn btn-ghost" id="btn-reset-view"><span class="btn-icon">⊙</span>Réinitialiser vue</button>
+
+    <div class="vsep"></div>
+
+    <div class="ctrl">
+      <div class="lbl">Aperçu</div>
+      <div class="just-group" id="preview-mode-group">
+        <button class="just-btn active" data-val="color">Couleur</button>
+        <button class="just-btn" data-val="mono">Mono</button>
+      </div>
+    </div>
+
+  </div>
+</aside>
+
+<!-- ══ COLONNE PRÉTRAITEMENT ══ -->
+<aside class="sidebar" id="col-pre">
+  <div class="col-header">
+    <h2>Image</h2>
+    <p>Prétraitement</p>
+  </div>
+  <div class="col-body">
+
+    <div class="sect">Recadrage</div>
+
+    <!-- Miniature cliquable → ouvre le popup -->
+    <div id="crop-wrap" title="Cliquer pour recadrer">
+      <img id="crop-img-src" alt="">
+      <canvas id="crop-overlay-indicator"></canvas>
+      <div id="crop-placeholder">Charger une image</div>
+    </div>
+
+    <div class="crop-btns show" id="crop-btns">
+      <button class="btn-crop btn-crop-enter" id="btn-crop-enter">✂ Recadrer…</button>
+      <button class="btn-crop btn-crop-reset" id="btn-crop-reset">↺ Image complète</button>
+    </div>
+
+    <div class="vsep"></div>
+    <div class="sect">Tonalité</div>
+
+    <div class="ctrl">
+      <div class="lbl">Luminosité <span class="lbl-val" id="v-brightness">0</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-brightness" data-dir="-1">−</button>
+        <input type="range" id="s-brightness" min="-100" max="100" step="1" value="0">
+        <button class="slider-btn" data-target="s-brightness" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="lbl">Contraste <span class="lbl-val" id="v-contrast">0</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-contrast" data-dir="-1">−</button>
+        <input type="range" id="s-contrast" min="-100" max="100" step="1" value="0">
+        <button class="slider-btn" data-target="s-contrast" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="lbl">Comp. hautes lum. <span class="lbl-val" id="v-hicomp">0</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-hicomp" data-dir="-1">−</button>
+        <input type="range" id="s-hicomp" min="0" max="100" step="1" value="0">
+        <button class="slider-btn" data-target="s-hicomp" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="lbl">Gamma <span class="lbl-val" id="v-gamma">1.00</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-gamma" data-dir="-1">−</button>
+        <input type="range" id="s-gamma" min="0.10" max="3.00" step="0.05" value="1.00">
+        <button class="slider-btn" data-target="s-gamma" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="vsep"></div>
+    <div class="sect">Niveaux</div>
+
+    <div class="ctrl">
+      <div class="lbl">Noir (entrée) <span class="lbl-val" id="v-inblack">0</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-inblack" data-dir="-1">−</button>
+        <input type="range" id="s-inblack" min="0" max="254" step="1" value="0">
+        <button class="slider-btn" data-target="s-inblack" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="lbl">Blanc (entrée) <span class="lbl-val" id="v-inwhite">255</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-inwhite" data-dir="-1">−</button>
+        <input type="range" id="s-inwhite" min="1" max="255" step="1" value="255">
+        <button class="slider-btn" data-target="s-inwhite" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="lbl">Amplitude gris <span class="lbl-val" id="v-grayamp">0</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-grayamp" data-dir="-1">−</button>
+        <input type="range" id="s-grayamp" min="-100" max="100" step="1" value="0">
+        <button class="slider-btn" data-target="s-grayamp" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="vsep"></div>
+    <div class="sect">Netteté / Flou</div>
+
+    <div class="ctrl">
+      <div class="lbl">Flou <span class="lbl-val" id="v-blur">0</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-blur" data-dir="-1">−</button>
+        <input type="range" id="s-blur" min="0" max="10" step="0.5" value="0">
+        <button class="slider-btn" data-target="s-blur" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="lbl">Netteté <span class="lbl-val" id="v-sharpen">0</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-sharpen" data-dir="-1">−</button>
+        <input type="range" id="s-sharpen" min="0" max="5" step="0.25" value="0">
+        <button class="slider-btn" data-target="s-sharpen" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="vsep"></div>
+
+    <button class="btn-json" id="btn-reset-pre" style="color:#c8401a;border-color:#3a2020">↺ Réinitialiser</button>
+
+  </div>
+</aside>
+
+<!-- ══ COLONNE CENTRALE ══ -->
+<main id="main">
+  <div id="drop-zone">
+    <div class="dz-icon">🖼</div>
+    <div class="dz-txt">Glisser une image</div>
+    <div class="dz-sub">PNG · JPG · GIF · WEBP</div>
+  </div>
+  <div id="viewport">
+    <div id="canvas-wrap">
+      <canvas id="cv"></canvas>
+      <div id="spinner"><div class="spin-ring"></div><div class="spin-txt">Calcul…</div></div>
+    </div>
+  </div>
+  <div id="zoom-hud">100%</div>
+  <div id="status"></div>
+</main>
+
+<!-- ══ COLONNE DROITE ══ -->
+<aside class="sidebar">
+  <div class="col-header">
+    <h2>Traitement</h2>
+    <p>Paramètres de tramage</p>
+  </div>
+  <div class="col-body">
+
+    <div class="sect">Tramage</div>
+
+    <div class="ctrl">
+      <div class="lbl">Calques <span class="lbl-val" id="v-calques">2</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-calques" data-dir="-1">−</button>
+        <input type="range" id="s-calques" min="1" max="12" step="1" value="2">
+        <button class="slider-btn" data-target="s-calques" data-dir="1">+</button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Seuil mini <span class="lbl-val" id="v-smin">0.050</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-smin" data-dir="-1">−</button>
+        <input type="range" id="s-smin" min="0.001" max="0.999" step="0.001" value="0.05">
+        <button class="slider-btn" data-target="s-smin" data-dir="1">+</button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Seuil maxi <span class="lbl-val" id="v-smax">0.850</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-smax" data-dir="-1">−</button>
+        <input type="range" id="s-smax" min="0.001" max="0.999" step="0.001" value="0.85">
+        <button class="slider-btn" data-target="s-smax" data-dir="1">+</button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Écart mini <span class="lbl-val" id="v-emin">10</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-emin" data-dir="-1">−</button>
+        <input type="range" id="s-emin" min="2" max="100" step="1" value="10">
+        <button class="slider-btn" data-target="s-emin" data-dir="1">+</button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Écart maxi <span class="lbl-val" id="v-emax">10</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-emax" data-dir="-1">−</button>
+        <input type="range" id="s-emax" min="2" max="100" step="1" value="10">
+        <button class="slider-btn" data-target="s-emax" data-dir="1">+</button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Angle départ <span class="lbl-val" id="v-angle">90°</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-angle" data-dir="-1">−</button>
+        <input type="range" id="s-angle" min="0" max="180" step="1" value="90">
+        <button class="slider-btn" data-target="s-angle" data-dir="1">+</button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Épais. trait <span class="lbl-val" id="v-weight">0.8</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-weight" data-dir="-1">−</button>
+        <input type="range" id="s-weight" min="0.1" max="8" step="0.1" value="0.8">
+        <button class="slider-btn" data-target="s-weight" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="lbl">Vibration trait <span class="lbl-val" id="v-wave-amp">0</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-wave-amp" data-dir="-1">−</button>
+        <input type="range" id="s-wave-amp" min="0" max="5" step="0.1" value="0">
+        <button class="slider-btn" data-target="s-wave-amp" data-dir="1">+</button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <div class="lbl">Fréq. vibration <span class="lbl-val" id="v-wave-freq">2.0</span></div>
+      <div class="slider-row">
+        <button class="slider-btn" data-target="s-wave-freq" data-dir="-1">−</button>
+        <input type="range" id="s-wave-freq" min="0.5" max="8" step="0.5" value="2">
+        <button class="slider-btn" data-target="s-wave-freq" data-dir="1">+</button>
+      </div>
+    </div>
+
+    <div class="vsep"></div>
+
+    <!-- Export / Import JSON paramètres -->
+    <div class="json-btns-row">
+      <button class="btn-json-sm" id="btn-save-json" title="Enregistrer paramètres">↓ Param</button>
+      <button class="btn-json-sm btn-json-load-sm" id="btn-load-json" title="Charger paramètres">↑ Param</button>
+    </div>
+
+    <div class="vsep"></div>
+
+    <div id="calques-wrap">
+      <div class="sect" style="margin-bottom:4px">Calques générés</div>
+      <div id="calques-legend"></div>
+    </div>
+
+  </div>
+</aside>
+
+<input type="file" id="json-input" accept=".json">
+<input type="file" id="file-input" accept="image/png,image/jpeg,image/gif,image/webp">
+
+<!-- ══ MODAL RECADRAGE ══ -->
+<div id="crop-modal">
+  <div id="crop-modal-inner">
+    <div id="crop-modal-toolbar">
+      <span class="crop-title">Recadrage</span>
+      <button class="crop-ratio-btn active" data-ratio="free">Libre</button>
+      <button class="crop-ratio-btn" data-ratio="orig">Original</button>
+      <button class="crop-ratio-btn" data-ratio="1">1:1</button>
+      <button class="crop-ratio-btn" data-ratio="1.5">3:2</button>
+      <button class="crop-ratio-btn" data-ratio="0.667">2:3</button>
+      <button class="crop-ratio-btn" data-ratio="1.333">4:3</button>
+      <button class="crop-ratio-btn" data-ratio="0.75">3:4</button>
+      <button class="crop-ratio-btn" data-ratio="1.778">16:9</button>
+      <div class="crop-spacer"></div>
+      <div id="crop-modal-info"></div>
+      <button class="crop-modal-btn crop-modal-reset" id="btn-modal-reset">↺ Tout</button>
+      <button class="crop-modal-btn crop-modal-cancel" id="btn-modal-cancel">Annuler</button>
+      <button class="crop-modal-btn crop-modal-apply" id="btn-modal-apply">✓ Appliquer</button>
+    </div>
+    <div id="crop-modal-canvas-wrap">
+      <img id="crop-modal-img" alt="">
+      <canvas id="crop-modal-canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+// SVG œil ouvert / fermé
+const EYE_OPEN = `<svg class="eye-svg" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M1 5C2.5 1.5 11.5 1.5 13 5C11.5 8.5 2.5 8.5 1 5Z" stroke="currentColor" stroke-width="1.2"/>
+  <circle cx="7" cy="5" r="1.8" stroke="currentColor" stroke-width="1.2"/>
+</svg>`;
+const EYE_CLOSED = `<svg class="eye-svg" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M1 5C2.5 1.5 11.5 1.5 13 5" stroke="currentColor" stroke-width="1.2"/>
+  <line x1="3" y1="8" x2="4.5" y2="6" stroke="currentColor" stroke-width="1.2"/>
+  <line x1="7" y1="9" x2="7" y2="6.5" stroke="currentColor" stroke-width="1.2"/>
+  <line x1="11" y1="8" x2="9.5" y2="6" stroke="currentColor" stroke-width="1.2"/>
+</svg>`;
+
+
+// ══ ZONE CIBLE ══
+// Retourne les dimensions (wMm, hMm) de la zone dans laquelle le dessin doit tenir.
+// La zone cible est toujours ≤ à la zone papier (marge déduite).
+const PAPER_FIXED = {
+  A0:[841,1189], A1:[594,841], A2:[420,594], A3:[297,420], A4:[210,297], A5:[148,210], A6:[105,148],
+  B0:[1000,1414], B1:[707,1000], B2:[500,707], B3:[354,500], B4:[250,354], B5:[177,250], B6:[125,177],
+  C0:[917,1297], C1:[648,917], C2:[458,648], C3:[324,458], C4:[229,324], C5:[162,229], C6:[114,162],
+};
+
+function getZoneCibleMm(pWmm, pHmm, margeBlanchemm) {
+  const zoneWmax = pWmm - 2*margeBlanchemm;
+  const zoneHmax = pHmm - 2*margeBlanchemm;
+  const zc = state.zoneCible;
+
+  if (zc === 'full') return [zoneWmax, zoneHmax];
+  if (zc === 'half-w') return [zoneWmax/2, zoneHmax];
+  if (zc === 'half-h') return [zoneWmax, zoneHmax/2];
+
+  // Format fixe (A4, B5…) : on prend les deux orientations possibles
+  // et on choisit celle qui s'inscrit le mieux dans la zone papier disponible
+  const dims = PAPER_FIXED[zc];
+  if (!dims) return [zoneWmax, zoneHmax];
+
+  const [fw, fh] = dims; // portrait par défaut (petit côté × grand côté)
+  const fl = Math.max(fw, fh); const fs = Math.min(fw, fh);
+
+  // Essayer portrait et paysage, garder celui qui rentre dans la zone
+  const candidates = [[fs, fl], [fl, fs]]; // portrait, paysage
+  let bestW = zoneWmax, bestH = zoneHmax;
+  let bestArea = 0;
+  for (const [cw, ch] of candidates) {
+    if (cw <= zoneWmax && ch <= zoneHmax) {
+      const area = cw * ch;
+      if (area > bestArea) { bestArea = area; bestW = cw; bestH = ch; }
+    }
+  }
+  // Si aucun ne rentre, réduire proportionnellement
+  if (bestArea === 0) {
+    const [cw, ch] = candidates[0]; // essai portrait
+    const scale = Math.min(zoneWmax/cw, zoneHmax/ch);
+    bestW = cw*scale; bestH = ch*scale;
+  }
+  return [bestW, bestH];
+}
+
+// ══ FORMATS PAPIER ══
+const PAPER_BASE = { A:[841,1189], B:[1000,1414], C:[917,1297] };
+function getPaperMm(serie, num, orientation) {
+  let [w,h] = PAPER_BASE[serie];
+  for (let i=0;i<num;i++){ if(w<h) h=Math.round(h/2); else w=Math.round(w/2); }
+  if(w>h)[w,h]=[h,w];
+  if(orientation==='landscape')[w,h]=[h,w];
+  return [w,h];
+}
+const PREVIEW_DPI=96, MM=25.4;
+function mmToPx(mm){ return Math.round(mm*PREVIEW_DPI/MM); }
+
+// ══ ÉTAT ══
+const state = {
+  nombreDangles:2, sensibiliteMin:0.05, sensibiliteMax:0.85,
+  minPas:10, maxPas:10, angleDepart:Math.PI*0.5,
+  epaisseurTrait:0.8,
+  waveAmp:0,
+  waveFreq:1.0, marge:10,
+  serie: (()=>{ try{ return localStorage.getItem('trames_serie')||'A'; }catch(e){ return 'A'; } })(),
+  formatNum: (()=>{ try{ return parseInt(localStorage.getItem('trames_num')||'3'); }catch(e){ return 3; } })(),
+  orientation: (()=>{ try{ return localStorage.getItem('trames_orient')||'portrait'; }catch(e){ return 'portrait'; } })(),
+  margeBlanchemm:10, cadreMm:1.0,
+  justH:'center',
+  justV:'middle',
+  zoneCible:'full',
+  // Prétraitement
+  pre_brightness: 0,
+  pre_contrast:   0,
+  pre_gamma:      1.0,
+  pre_inblack:    0,
+  pre_inwhite:    255,
+  pre_blur:       0,
+  pre_sharpen:    0,
+  pre_hicomp:     0,
+  pre_grayamp:    0,
+  previewMono:    false,
+};
+
+let layerVisible = Array(12).fill(true);
+let sourceImage=null, renderTimer=null, lastCalques=null, renderCtx=null;
+let sourceFileName='';
+
+// ══ REFS ══
+const cv=document.getElementById('cv');
+let ctx=cv.getContext('2d');
+const spinner=document.getElementById('spinner');
+const dropZone=document.getElementById('drop-zone');
+const statusEl=document.getElementById('status');
+const legend=document.getElementById('calques-legend');
+const viewport=document.getElementById('viewport');
+const mainEl=document.getElementById('main');
+const zoomHud=document.getElementById('zoom-hud');
+const fmtLabel=document.getElementById('v-format');
+const fileInfo=document.getElementById('file-info');
+
+// ══ ZOOM / PAN ══
+let panX=0,panY=0,zoom=1,isPanning=false,psx=0,psy=0;
+function applyTransform(){ viewport.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`; }
+function resetView(){ panX=0;panY=0;zoom=1;applyTransform();flashZoom(); }
+function flashZoom(){
+  zoomHud.textContent=Math.round(zoom*100)+'%'; zoomHud.classList.add('show');
+  clearTimeout(zoomHud._t); zoomHud._t=setTimeout(()=>zoomHud.classList.remove('show'),1400);
+}
+mainEl.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const f=e.deltaY<0?1.1:0.9091;
+  const r=mainEl.getBoundingClientRect();
+  const mx=e.clientX-r.left-r.width/2,my=e.clientY-r.top-r.height/2;
+  panX=mx+(panX-mx)*f; panY=my+(panY-my)*f;
+  zoom=Math.min(30,Math.max(0.04,zoom*f));
+  applyTransform(); flashZoom();
+},{passive:false});
+mainEl.addEventListener('mousedown',e=>{
+  if(e.target.closest('#drop-zone')) return;
+  isPanning=true; psx=e.clientX-panX; psy=e.clientY-panY; mainEl.style.cursor='grabbing';
+});
+window.addEventListener('mousemove',e=>{ if(!isPanning)return; panX=e.clientX-psx;panY=e.clientY-psy;applyTransform(); });
+window.addEventListener('mouseup',()=>{ isPanning=false; mainEl.style.cursor='grab'; });
+let lastTD=null;
+mainEl.addEventListener('touchstart',e=>{
+  if(e.touches.length===1){isPanning=true;psx=e.touches[0].clientX-panX;psy=e.touches[0].clientY-panY;}
+  if(e.touches.length===2){isPanning=false;lastTD=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);}
+},{passive:true});
+mainEl.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(e.touches.length===1&&isPanning){panX=e.touches[0].clientX-psx;panY=e.touches[0].clientY-psy;applyTransform();}
+  if(e.touches.length===2&&lastTD){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);zoom=Math.min(30,Math.max(0.04,zoom*d/lastTD));lastTD=d;applyTransform();flashZoom();}
+},{passive:false});
+mainEl.addEventListener('touchend',()=>{isPanning=false;lastTD=null;});
+document.getElementById('btn-reset-view').addEventListener('click',resetView);
+
+// ══ SLIDERS avec +/- ══
+const SLIDER_CFG = {
+  's-calques':{ key:'nombreDangles', valId:'v-calques', fmt:v=>Math.round(v)+'', tr:null },
+  's-smin':   { key:'sensibiliteMin',valId:'v-smin',   fmt:v=>v.toFixed(3),       tr:null },
+  's-smax':   { key:'sensibiliteMax',valId:'v-smax',   fmt:v=>v.toFixed(3),       tr:null },
+  's-emin':   { key:'minPas',        valId:'v-emin',   fmt:v=>Math.round(v)+'',   tr:null },
+  's-emax':   { key:'maxPas',        valId:'v-emax',   fmt:v=>Math.round(v)+'',   tr:null },
+  's-angle':  { key:'angleDepart',   valId:'v-angle',  fmt:v=>Math.round(v)+'°',  tr:v=>v*Math.PI/180 },
+  's-weight':    { key:'epaisseurTrait',valId:'v-weight',    fmt:v=>v.toFixed(1),  tr:null },
+  's-wave-amp':  { key:'waveAmp',        valId:'v-wave-amp',  fmt:v=>v.toFixed(1),  tr:null }, // px — vibration subtile
+  's-wave-freq': { key:'waveFreq',       valId:'v-wave-freq', fmt:v=>v.toFixed(1),  tr:null },
+  // Prétraitement
+  's-brightness':{ key:'pre_brightness',valId:'v-brightness',fmt:v=>Math.round(v)+'',   tr:null },
+  's-contrast':  { key:'pre_contrast',  valId:'v-contrast',  fmt:v=>Math.round(v)+'',   tr:null },
+  's-gamma':     { key:'pre_gamma',     valId:'v-gamma',     fmt:v=>v.toFixed(2),        tr:null },
+  's-inblack':   { key:'pre_inblack',   valId:'v-inblack',   fmt:v=>Math.round(v)+'',   tr:null },
+  's-inwhite':   { key:'pre_inwhite',   valId:'v-inwhite',   fmt:v=>Math.round(v)+'',   tr:null },
+  's-grayamp':   { key:'pre_grayamp',  valId:'v-grayamp',  fmt:v=>Math.round(v)+'',   tr:null },
+  's-hicomp':    { key:'pre_hicomp',   valId:'v-hicomp',   fmt:v=>Math.round(v)+'',   tr:null },
+  's-blur':      { key:'pre_blur',      valId:'v-blur',      fmt:v=>v.toFixed(1),        tr:null },
+  's-sharpen':   { key:'pre_sharpen',   valId:'v-sharpen',   fmt:v=>v.toFixed(2),        tr:null },
+  's-marge':  { key:'margeBlanchemm',valId:'v-marge',  fmt:v=>Math.round(v)+' mm',tr:null },
+  's-cadre':  { key:'cadreMm',       valId:'v-cadre',  fmt:v=>v.toFixed(1)+' mm', tr:null },
+};
+
+// Sliders qui ne nécessitent qu'un repaint (pas de recalcul du tramage)
+const REPAINT_ONLY_SLIDERS = new Set(['s-wave-amp','s-wave-freq']);
+
+function applySlider(id, rawVal) {
+  const cfg = SLIDER_CFG[id];
+  if(!cfg) return;
+  const vl = document.getElementById(cfg.valId);
+  if(vl) vl.textContent = cfg.fmt(rawVal);
+  state[cfg.key] = cfg.tr ? cfg.tr(rawVal) : rawVal;
+  if(REPAINT_ONLY_SLIDERS.has(id)){
+    repaintCanvas(); // ondulation : recalcul du tracé seulement, pas du tramage
+  } else {
+    scheduleRender();
+  }
+}
+
+Object.keys(SLIDER_CFG).forEach(id=>{
+  const sl=document.getElementById(id);
+  if(!sl) return;
+  sl.addEventListener('input',()=>applySlider(id, parseFloat(sl.value)));
+});
+
+// Boutons +/-
+document.querySelectorAll('.slider-btn').forEach(btn=>{
+  // Support appui long
+  let interval=null;
+  function step(){
+    const sl=document.getElementById(btn.dataset.target);
+    if(!sl) return;
+    const dir=parseInt(btn.dataset.dir);
+    const stepVal=parseFloat(sl.step)||1;
+    let v=Math.round((parseFloat(sl.value)+dir*stepVal)*1e6)/1e6;
+    v=Math.min(parseFloat(sl.max),Math.max(parseFloat(sl.min),v));
+    sl.value=v;
+    applySlider(sl.id, v);
+  }
+  btn.addEventListener('mousedown',e=>{
+    e.preventDefault(); step();
+    interval=setInterval(step,120);
+  });
+  window.addEventListener('mouseup',()=>{ clearInterval(interval); interval=null; },{once:false});
+  btn.addEventListener('mouseleave',()=>{ clearInterval(interval); interval=null; });
+});
+
+// ══ FORMAT PAPIER ══
+function updateFormatLabel(){
+  const [w,h]=getPaperMm(state.serie,state.formatNum,state.orientation);
+  fmtLabel.textContent=`${state.serie}${state.formatNum} ${w}×${h}`;
+}
+document.getElementById('s-serie').addEventListener('change',e=>{ state.serie=e.target.value; try{localStorage.setItem('trames_serie',state.serie);}catch(e){} updateFormatLabel();scheduleRender();});
+document.getElementById('s-format').addEventListener('change',e=>{ state.formatNum=parseInt(e.target.value); try{localStorage.setItem('trames_num',state.formatNum);}catch(e){} updateFormatLabel();scheduleRender();});
+document.getElementById('s-orient').addEventListener('change',e=>{ state.orientation=e.target.value; try{localStorage.setItem('trames_orient',state.orientation);}catch(e){} updateFormatLabel();scheduleRender();});
+updateFormatLabel();
+
+// ══ JUSTIFICATION ══
+document.getElementById('preview-mode-group').addEventListener('click', e => {
+  const btn = e.target.closest('.just-btn');
+  if (!btn) return;
+  document.querySelectorAll('#preview-mode-group .just-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.previewMono = btn.dataset.val === 'mono';
+  repaintCanvas(); // repaint sans recalcul
+});
+
+document.getElementById('just-h-group').addEventListener('click',e=>{
+  const btn=e.target.closest('.just-btn'); if(!btn) return;
+  document.querySelectorAll('#just-h-group .just-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  state.justH=btn.dataset.val;
+  scheduleRender();
+});
+document.getElementById('just-v-group').addEventListener('click',e=>{
+  const btn=e.target.closest('.just-btn'); if(!btn) return;
+  document.querySelectorAll('#just-v-group .just-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  state.justV=btn.dataset.val;
+  scheduleRender();
+});
+document.getElementById('s-zone-cible').addEventListener('change',e=>{
+  state.zoneCible=e.target.value;
+  document.getElementById('v-zone-cible').textContent=e.target.options[e.target.selectedIndex].text;
+  scheduleRender();
+});
+
+
+// ══ PALETTE ══
+const COLORS=['#c8401a','#3a5a8c','#2a7a4a','#8c5a1a','#6a3a8c','#1a7a8c',
+              '#8c1a6a','#4a7a1a','#8c3a3a','#1a4a8c','#6a7a1a','#3a8c5a'];
+
+function updateLegend(calData){
+  const n=state.nombreDangles;
+  let html='';
+  for(let i=0;i<n;i++){
+    const angle=state.angleDepart+(i/n)*Math.PI;
+    const deg=Math.round(angle*180/Math.PI)%180;
+    const col=COLORS[i%COLORS.length];
+    const vis=layerVisible[i];
+    const cnt=calData?calData[i].lignes.length:'';
+    html+=`<div class="cl-row${vis?'':' off'}" data-idx="${i}">
+      <div class="eye-btn">${vis?EYE_OPEN:EYE_CLOSED}</div>
+      <div class="cl-swatch" style="background:${col}"></div>
+      <div class="cl-lbl">${i+1} · ${deg}°</div>
+      <div class="cl-count">${cnt}</div>
+    </div>`;
+  }
+  legend.innerHTML=html;
+  legend.querySelectorAll('.cl-row').forEach(row=>{
+    row.addEventListener('click',()=>{
+      const idx=parseInt(row.dataset.idx);
+      layerVisible[idx]=!layerVisible[idx];
+      repaintCanvas();
+    });
+  });
+}
+
+// ══ RECADRAGE IMAGE ══
+let cropRect    = null;   // crop appliqué [x,y,w,h] normalisé 0..1
+let cropDraft   = null;   // sélection en cours {x,y,w,h} px
+let cropDragStart = null;
+let cropRatioLock = 'free'; // 'free' | 'orig' | nombre (w/h)
+
+// ── Refs modal ──
+const cropModal       = document.getElementById('crop-modal');
+const cropModalImg    = document.getElementById('crop-modal-img');
+const cropModalCanvas = document.getElementById('crop-modal-canvas');
+const cropModalCtx    = cropModalCanvas ? cropModalCanvas.getContext('2d') : null;
+const cropModalInfo   = document.getElementById('crop-modal-info');
+
+// ── Refs col-pre (miniature) ──
+const cropImgSrc      = document.getElementById('crop-img-src');
+const cropPlaceholder = document.getElementById('crop-placeholder');
+const cropBtns        = document.getElementById('crop-btns');
+const cropIndicator   = document.getElementById('crop-overlay-indicator');
+
+// ── Mise à jour miniature dans col-pre ──
+function updateCropImage() {
+  if (!sourceImage) return;
+  cropImgSrc.src = sourceImage.src;
+  cropImgSrc.classList.add('show');
+  if (cropPlaceholder) cropPlaceholder.classList.add('hidden');
+  drawCropIndicator();
+}
+
+// Dessine le rectangle de crop actuel sur la miniature (indicateur)
+function drawCropIndicator() {
+  if (!cropIndicator || !cropImgSrc.classList.contains('show')) return;
+  const cropWrap = document.getElementById('crop-wrap');
+  cropIndicator.width  = cropWrap.clientWidth;
+  cropIndicator.height = cropWrap.clientHeight;
+  const ctx2 = cropIndicator.getContext('2d');
+  ctx2.clearRect(0,0,cropIndicator.width,cropIndicator.height);
+  if (!cropRect) return;
+  const {iX,iY,iW,iH} = getImgRectFor(wrap.clientWidth, wrap.clientHeight);
+  ctx2.strokeStyle = var_accent();
+  ctx2.lineWidth = 1.5;
+  ctx2.strokeRect(
+    iX + cropRect[0]*iW, iY + cropRect[1]*iH,
+    cropRect[2]*iW, cropRect[3]*iH
+  );
+}
+function var_accent(){ return '#c8401a'; }
+
+// ── Calcul zone image dans un conteneur (object-fit: contain) ──
+function getImgRectFor(W, H) {
+  if (!sourceImage) return {iX:0,iY:0,iW:W,iH:H};
+  const imgR = sourceImage.width / sourceImage.height;
+  const cvR  = W / H;
+  let iW, iH;
+  if (imgR > cvR) { iW=W; iH=W/imgR; }
+  else            { iH=H; iW=H*imgR; }
+  return { iX:(W-iW)/2, iY:(H-iH)/2, iW, iH };
+}
+
+// ── Ratio effectif locked ──
+function getLockedRatio() {
+  if (cropRatioLock === 'free') return null;
+  if (cropRatioLock === 'orig') return sourceImage ? sourceImage.width/sourceImage.height : null;
+  return parseFloat(cropRatioLock);
+}
+
+// ── Ouvrir le modal ──
+function openCropModal() {
+  if (!sourceImage) return;
+  cropModal.classList.add('open');
+  // Mettre l'image dans le modal
+  cropModalImg.src = sourceImage.src;
+  cropModalImg.onload = () => { resizeModalCanvas(); drawModalOverlay(); };
+  resizeModalCanvas();
+  drawModalOverlay();
+}
+
+function closeCropModal() {
+  cropModal.classList.remove('open');
+  cropDraft = null;
+}
+
+function resizeModalCanvas() {
+  const modalWrap = document.getElementById('crop-modal-canvas-wrap');
+  cropModalCanvas.width  = modalWrap.clientWidth;
+  cropModalCanvas.height = modalWrap.clientHeight;
+}
+
+// ── Zone image dans le modal ──
+function getModalImgRect() {
+  const W = cropModalCanvas.width, H = cropModalCanvas.height;
+  return getImgRectFor(W, H);
+}
+
+// ── Dessin overlay modal ──
+function drawModalOverlay() {
+  if (!cropModalCtx) return;
+  const W = cropModalCanvas.width, H = cropModalCanvas.height;
+  const {iX,iY,iW,iH} = getModalImgRect();
+
+  cropModalCtx.clearRect(0,0,W,H);
+  cropModalCtx.fillStyle = 'rgba(0,0,0,0.55)';
+  cropModalCtx.fillRect(0,0,W,H);
+
+  // Zone sélectionnée : draft ou crop actuel
+  let rx,ry,rw,rh;
+  if (cropDraft) {
+    rx = Math.min(cropDraft.x, cropDraft.x+cropDraft.w);
+    ry = Math.min(cropDraft.y, cropDraft.y+cropDraft.h);
+    rw = Math.abs(cropDraft.w);
+    rh = Math.abs(cropDraft.h);
+  } else if (cropRect) {
+    rx = iX + cropRect[0]*iW;
+    ry = iY + cropRect[1]*iH;
+    rw = cropRect[2]*iW;
+    rh = cropRect[3]*iH;
+  } else {
+    // Info d'aide
+    cropModalCtx.fillStyle = 'rgba(255,255,255,0.15)';
+    cropModalCtx.font = '11px DM Mono, monospace';
+    cropModalCtx.textAlign = 'center';
+    cropModalCtx.fillText('Glisser pour sélectionner la zone', W/2, H/2);
+    return;
+  }
+
+  // Effacer la sélection
+  cropModalCtx.clearRect(rx,ry,rw,rh);
+  // Masque autour
+  cropModalCtx.fillStyle = 'rgba(0,0,0,0.55)';
+  cropModalCtx.fillRect(0,0,W,ry);
+  cropModalCtx.fillRect(0,ry+rh,W,H-ry-rh);
+  cropModalCtx.fillRect(0,ry,rx,rh);
+  cropModalCtx.fillRect(rx+rw,ry,W-rx-rw,rh);
+
+  // Bordure
+  cropModalCtx.strokeStyle = '#fff';
+  cropModalCtx.lineWidth = 1.5;
+  cropModalCtx.setLineDash([]);
+  cropModalCtx.strokeRect(rx+0.75,ry+0.75,rw-1.5,rh-1.5);
+
+  // Tiers
+  cropModalCtx.strokeStyle = 'rgba(255,255,255,0.25)';
+  cropModalCtx.lineWidth = 0.5;
+  for (let t=1; t<3; t++) {
+    cropModalCtx.beginPath(); cropModalCtx.moveTo(rx+rw*t/3,ry); cropModalCtx.lineTo(rx+rw*t/3,ry+rh); cropModalCtx.stroke();
+    cropModalCtx.beginPath(); cropModalCtx.moveTo(rx,ry+rh*t/3); cropModalCtx.lineTo(rx+rw,ry+rh*t/3); cropModalCtx.stroke();
+  }
+
+  // Poignées coins (L-shape)
+  const L=12, T=2;
+  cropModalCtx.fillStyle='#fff';
+  [[rx,ry,1,1],[rx+rw,ry,-1,1],[rx,ry+rh,1,-1],[rx+rw,ry+rh,-1,-1]].forEach(([hx,hy,dx,dy])=>{
+    cropModalCtx.fillRect(hx, hy, dx*L, dy*T);
+    cropModalCtx.fillRect(hx, hy, dx*T, dy*L);
+  });
+
+  // Info dimensions px (iW,iH déjà déclarés plus haut)
+  const pw = Math.round((rw/iW)*sourceImage.width);
+  const ph = Math.round((rh/iH)*sourceImage.height);
+  if (cropModalInfo) cropModalInfo.textContent = `${pw} × ${ph} px`;
+}
+
+// ── Gestion drag dans le modal ──
+
+// Cache du rect du canvas (mis à jour au mousedown seulement)
+let _cachedModalRect = null;
+let _rafPending = false;
+
+function getModalEventPos(e) {
+  const touch = e.touches ? e.touches[0] : e;
+  // Utiliser le rect caché pour éviter reflow à chaque mousemove
+  const rect = _cachedModalRect || cropModalCanvas.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(rect.width,  touch.clientX - rect.left)),
+    y: Math.max(0, Math.min(rect.height, touch.clientY - rect.top)),
+  };
+}
+
+function applyRatioToDraft(draft) {
+  // ratioBase = w/h exact du bouton sélectionné
+  // 2:3 → 0.667 (portrait), 3:2 → 1.5 (paysage), 1:1 → 1.0
+  // On applique TOUJOURS ce ratio exact, sans l'inverser.
+  // L'axe "moteur" est celui qui a le plus bougé depuis le départ du drag,
+  // et on calcule l'autre axe en conséquence.
+  const ratioBase = getLockedRatio();
+  if (!ratioBase) return draft;
+  const {iX, iY, iW, iH} = getModalImgRect();
+
+  const sign_w = draft.w < 0 ? -1 : 1;
+  const sign_h = draft.h < 0 ? -1 : 1;
+  const absW   = Math.abs(draft.w);
+  const absH   = Math.abs(draft.h) || 1;
+
+  // Axe moteur = celui qui a le plus bougé
+  // On calcule l'autre axe pour respecter ratioBase (w/h)
+  let w, h;
+  if (absW / absH >= ratioBase) {
+    // Mouvement dominant horizontal → w commande, h suit
+    w = sign_w * absW;
+    h = sign_h * absW / ratioBase;
+  } else {
+    // Mouvement dominant vertical → h commande, w suit
+    h = sign_h * absH;
+    w = sign_w * absH * ratioBase;
+  }
+
+  // Clamp dans les limites de l'image affichée
+  const maxW = w > 0 ? iX + iW - draft.x : draft.x - iX;
+  const maxH = h > 0 ? iY + iH - draft.y : draft.y - iY;
+  if (Math.abs(w) > Math.abs(maxW)) { w = sign_w * Math.abs(maxW); h = sign_h * Math.abs(w) / ratioBase; }
+  if (Math.abs(h) > Math.abs(maxH)) { h = sign_h * Math.abs(maxH); w = sign_w * Math.abs(h) * ratioBase; }
+
+  return { ...draft, w, h };
+}
+
+function onModalDragStart(e) {
+  e.preventDefault();
+  // Invalider et re-mesurer le rect au moment du clic (seul reflow intentionnel)
+  _cachedModalRect = cropModalCanvas.getBoundingClientRect();
+  const {x, y} = getModalEventPos(e);
+  cropDragStart = {x, y};
+  cropDraft = {x, y, w: 0, h: 0};
+}
+
+function onModalDragMove(e) {
+  if (!cropDragStart || !cropModal.classList.contains('open')) return;
+  if (e.cancelable) e.preventDefault();
+
+  const {x, y} = getModalEventPos(e);
+  const rawW = x - cropDragStart.x;
+  const rawH = y - cropDragStart.y;
+
+  const draft = { x: cropDragStart.x, y: cropDragStart.y, w: rawW, h: rawH };
+  cropDraft = applyRatioToDraft(draft);
+
+  // Utiliser requestAnimationFrame pour ne redessiner qu'une fois par frame
+  if (!_rafPending) {
+    _rafPending = true;
+    requestAnimationFrame(() => {
+      drawModalOverlay();
+      _rafPending = false;
+    });
+  }
+}
+
+function onModalDragEnd() {
+  cropDragStart = null;
+}
+
+if (cropModalCanvas) {
+  cropModalCanvas.addEventListener('mousedown',  onModalDragStart);
+  cropModalCanvas.addEventListener('touchstart', onModalDragStart, {passive: false});
+}
+window.addEventListener('mousemove',  onModalDragMove);
+window.addEventListener('touchmove',  onModalDragMove, {passive: false});
+window.addEventListener('mouseup',    onModalDragEnd);
+window.addEventListener('touchend',   onModalDragEnd);
+
+// ── Ratio buttons ──
+document.querySelectorAll('.crop-ratio-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.crop-ratio-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    cropRatioLock = btn.dataset.ratio;
+    cropDraft = null;
+    drawModalOverlay();
+  });
+});
+
+// ── Boutons modal ──
+document.getElementById('btn-modal-apply').addEventListener('click', () => {
+  try {
+    if (cropDraft && Math.abs(cropDraft.w) > 2 && Math.abs(cropDraft.h) > 2) {
+      const {iX,iY,iW,iH} = getModalImgRect();
+      if (iW > 0 && iH > 0) {
+        const x1 = Math.max(0,Math.min(1,(Math.min(cropDraft.x,cropDraft.x+cropDraft.w)-iX)/iW));
+        const y1 = Math.max(0,Math.min(1,(Math.min(cropDraft.y,cropDraft.y+cropDraft.h)-iY)/iH));
+        const x2 = Math.max(0,Math.min(1,(Math.max(cropDraft.x,cropDraft.x+cropDraft.w)-iX)/iW));
+        const y2 = Math.max(0,Math.min(1,(Math.max(cropDraft.y,cropDraft.y+cropDraft.h)-iY)/iH));
+        if ((x2-x1)>0.01 && (y2-y1)>0.01) cropRect=[x1,y1,x2-x1,y2-y1];
+      }
+    }
+  } catch(e) { statusEl.textContent='ERR cropRect: '+e.message; }
+  cropDraft = null;
+  try { closeCropModal(); } catch(e) { statusEl.textContent='ERR close: '+e.message; }
+  try { drawCropIndicator(); } catch(e) { statusEl.textContent='ERR indicator: '+e.message; }
+  statusEl.textContent = 'Apply cliqué — render dans 500ms';
+  statusEl.classList.add('show');
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(() => {
+    try { render(); }
+    catch(e) { statusEl.textContent='ERR render: '+e.message; statusEl.classList.add('show'); }
+  }, 500);
+});
+
+document.getElementById('btn-modal-cancel').addEventListener('click', closeCropModal);
+
+document.getElementById('btn-modal-reset').addEventListener('click', () => {
+  cropRect=null; cropDraft=null;
+  drawModalOverlay();
+  drawCropIndicator();
+});
+
+// Fermer sur clic fond
+cropModal && cropModal.addEventListener('click', e => {
+  if (e.target===cropModal) closeCropModal();
+});
+
+// Escape
+window.addEventListener('keydown', e => {
+  if (e.key==='Escape' && cropModal.classList.contains('open')) closeCropModal();
+});
+
+// Resize
+window.addEventListener('resize', () => {
+  if (cropModal.classList.contains('open')) { resizeModalCanvas(); drawModalOverlay(); }
+});
+
+// ── Boutons colonne prétraitement ──
+document.getElementById('btn-crop-enter').addEventListener('click', () => {
+  if (!sourceImage) return;
+  cropDraft = null;
+  openCropModal();
+});
+
+document.getElementById('btn-crop-reset').addEventListener('click', () => {
+  cropRect=null; cropDraft=null;
+  drawCropIndicator();
+  scheduleRender();
+});
+
+function showCropButtons(show) {
+  if (cropBtns) cropBtns.classList.toggle('show', show);
+}
+
+// ══ CHARGEMENT IMAGE ══
+function loadImageFromFile(file){
+  if(!file||!file.type.match(/image\//)) return;
+  const blobUrl=URL.createObjectURL(file);
+  // Stocker le nom sans extension pour l'export
+  sourceFileName = file.name.replace(/\.[^.]+$/, '');
+  const img=new Image();
+  img.onload=()=>{
+    sourceImage=img;
+    // Afficher dans la zone crop grande taille
+    updateCropImage();
+    const kb=(file.size/1024).toFixed(0);
+    fileInfo.innerHTML=`<span style="color:#ccc">${file.name}</span><br>${img.width}×${img.height} px · ${kb} Ko`;
+    dropZone.classList.add('hidden');
+    showCropButtons(true);
+    cropRect = null; // reset crop à chaque nouvelle image
+    resetView(); scheduleRender();
+  };
+  img.src=blobUrl;
+}
+document.getElementById('btn-open').addEventListener('click',()=>document.getElementById('file-input').click());
+document.getElementById('file-input').addEventListener('change',e=>{loadImageFromFile(e.target.files[0]);e.target.value='';});
+document.body.addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drag-over');});
+document.body.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('drag-over');});
+document.body.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('drag-over');loadImageFromFile(e.dataTransfer.files[0]);});
+
+// ══ PRÉTRAITEMENT IMAGE ══
+
+// Listener inversion
+// Reset prétraitement
+document.getElementById('btn-reset-pre').addEventListener('click', () => {
+  const defaults = {
+    's-brightness': 0, 's-contrast': 0, 's-gamma': 1.0,
+    's-inblack': 0, 's-inwhite': 255, 's-blur': 0, 's-sharpen': 0,
+  };
+  for (const [id, val] of Object.entries(defaults)) {
+    const sl = document.getElementById(id);
+    if (sl) { sl.value = val; applySlider(id, val); }
+  }
+
+  // Réinitialiser hicomp
+  const slGrayamp = document.getElementById('s-grayamp');
+  if (slGrayamp) { slGrayamp.value = 0; applySlider('s-grayamp', 0); }
+  const slHicomp = document.getElementById('s-hicomp');
+  if (slHicomp) { slHicomp.value = 0; applySlider('s-hicomp', 0); }
+  scheduleRender();
+});
+
+// Convolution 3×3 générique sur ImageData
+function convolve(imgData, kernel, divisor) {
+  const src = new Uint8ClampedArray(imgData.data);
+  const dst = imgData.data;
+  const w = imgData.width, h = imgData.height;
+  for (let y = 1; y < h-1; y++) {
+    for (let x = 1; x < w-1; x++) {
+      let r=0, g=0, b=0;
+      for (let ky=-1; ky<=1; ky++) {
+        for (let kx=-1; kx<=1; kx++) {
+          const i = ((y+ky)*w + (x+kx)) * 4;
+          const k = kernel[(ky+1)*3 + (kx+1)];
+          r += src[i]   * k;
+          g += src[i+1] * k;
+          b += src[i+2] * k;
+        }
+      }
+      const i = (y*w + x) * 4;
+      dst[i]   = Math.max(0, Math.min(255, r/divisor));
+      dst[i+1] = Math.max(0, Math.min(255, g/divisor));
+      dst[i+2] = Math.max(0, Math.min(255, b/divisor));
+    }
+  }
+}
+
+// Flou gaussien séparable (horizontal puis vertical)
+// Bien plus précis que la convolution 3×3 répétée
+function gaussKernel(sigma) {
+  const r = Math.ceil(sigma * 2.5);
+  const size = 2*r + 1;
+  const k = new Float32Array(size);
+  let sum = 0;
+  for (let i = 0; i < size; i++) {
+    const x = i - r;
+    k[i] = Math.exp(-(x*x) / (2*sigma*sigma));
+    sum += k[i];
+  }
+  for (let i = 0; i < size; i++) k[i] /= sum;
+  return { k, r };
+}
+
+function applyBoxBlur(imgData, radius) {
+  if (radius <= 0) return;
+  const sigma = Math.max(0.5, radius * 0.8);
+  const { k, r } = gaussKernel(sigma);
+  const w = imgData.width, h = imgData.height;
+  const src = new Uint8ClampedArray(imgData.data);
+  const tmp = new Float32Array(w * h * 4);
+  const dst = imgData.data;
+
+  // Passe horizontale : src → tmp
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let R=0,G=0,B=0;
+      for (let ki = -r; ki <= r; ki++) {
+        const sx = Math.max(0, Math.min(w-1, x+ki));
+        const idx = (y*w + sx)*4;
+        const weight = k[ki+r];
+        R += src[idx]   * weight;
+        G += src[idx+1] * weight;
+        B += src[idx+2] * weight;
+      }
+      const ti = (y*w + x)*4;
+      tmp[ti]=R; tmp[ti+1]=G; tmp[ti+2]=B; tmp[ti+3]=src[ti+3];
+    }
+  }
+
+  // Passe verticale : tmp → dst
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let R=0,G=0,B=0;
+      for (let ki = -r; ki <= r; ki++) {
+        const sy = Math.max(0, Math.min(h-1, y+ki));
+        const ti = (sy*w + x)*4;
+        const weight = k[ki+r];
+        R += tmp[ti]   * weight;
+        G += tmp[ti+1] * weight;
+        B += tmp[ti+2] * weight;
+      }
+      const di = (y*w + x)*4;
+      dst[di]   = Math.round(R);
+      dst[di+1] = Math.round(G);
+      dst[di+2] = Math.round(B);
+    }
+  }
+}
+
+// Netteté — unsharp-mask avec kernel de Laplacien
+function applySharpen(imgData, amount) {
+  if (amount <= 0) return;
+  // Kernel netteté : centre élevé, voisins négatifs
+  const k = amount;
+  const center = 1 + 4*k;
+  const kernel = [0,-k,0, -k,center,-k, 0,-k,0];
+  convolve(imgData, kernel, 1);
+}
+
+// Application de tous les prétraitements sur un ImageData (modifie en place)
+function applyPreprocess(imgData) {
+  const d = imgData.data;
+  const n = d.length;
+  const bri  = state.pre_brightness / 100;
+  const con  = state.pre_contrast   / 100;
+  const gam  = state.pre_gamma;
+  const inB  = state.pre_inblack  / 255;
+  const inW  = state.pre_inwhite  / 255;
+
+  const hicomp  = state.pre_hicomp / 100;
+  const grayamp = state.pre_grayamp / 100; // -1..+1
+
+  // Précalculer la LUT (Look-Up Table) sur 256 valeurs
+  const lut = new Uint8ClampedArray(256);
+  for (let i = 0; i < 256; i++) {
+    let v = i / 255;
+
+    // 1. Niveaux entrée : remap [inB, inW] → [0, 1]
+    v = Math.max(0, Math.min(1, (v - inB) / Math.max(0.001, inW - inB)));
+
+    // 2. Gamma
+    v = Math.pow(v, 1 / Math.max(0.01, gam));
+
+    // 3. Luminosité (additive)
+    v = v + bri;
+
+    // 4. Contraste (autour de 0.5)
+    v = (v - 0.5) * (1 + con) + 0.5;
+
+    // 5. Amplitude gris : étire (>0) ou comprime (<0) la gamme autour du milieu
+    if (grayamp !== 0) {
+      v = 0.5 + (v - 0.5) * (1 + grayamp);
+    }
+
+    // 5b. Compression hautes lumières :
+    //    comprime non-linéairement les valeurs > 0.5 vers le bas
+    //    plus hicomp est élevé, plus les clairs sont assombris
+    if (hicomp > 0 && v > 0) {
+      // Fonction : v_out = v / (1 + hicomp * v)  → comprime les hauts
+      v = v / (1 + hicomp * 2 * v);
+    }
+
+
+    lut[i] = Math.round(Math.max(0, Math.min(1, v)) * 255);
+  }
+
+  // Appliquer la LUT pixel par pixel
+  for (let i = 0; i < n; i += 4) {
+    d[i]   = lut[d[i]];
+    d[i+1] = lut[d[i+1]];
+    d[i+2] = lut[d[i+2]];
+  }
+
+  // Flou puis netteté (ordre important)
+  applyBoxBlur(imgData, state.pre_blur);
+  applySharpen(imgData, state.pre_sharpen);
+}
+
+// ══ ALGO ══
+function brightness(imgData,x,y){
+  const ix=Math.max(0,Math.min(imgData.width-1,Math.round(x)));
+  const iy=Math.max(0,Math.min(imgData.height-1,Math.round(y)));
+  const d=imgData.data,i=(iy*imgData.width+ix)*4;
+  return (0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])/255;
+}
+function getLignes(imgData,w,h,marge,angle,sens,pas){
+  const lignes=[];
+  const r=Math.sqrt((w/2)**2+(h/2)**2)*2.1;
+  const cx=w/2,cy=h/2;
+  const x1=cx+Math.cos(angle)*r,             y1=cy+Math.sin(angle)*r;
+  const x2=cx+Math.cos(Math.PI/2+angle)*r,   y2=cy+Math.sin(Math.PI/2+angle)*r;
+  const x3=cx+Math.cos(Math.PI+angle)*r,     y3=cy+Math.sin(Math.PI+angle)*r;
+  const x4=cx+Math.cos(Math.PI*1.5+angle)*r, y4=cy+Math.sin(Math.PI*1.5+angle)*r;
+  const dL=Math.hypot(x2-x1,y2-y1);
+  const ec=1/Math.max(1,Math.floor(dL/pas));
+  let aller=true;
+  for(let a=0;a<=1+ec;a+=ec){
+    let xh=x1+(x2-x1)*a,yh=y1+(y2-y1)*a;
+    let xb=x4+(x3-x4)*a,yb=y4+(y3-y4)*a;
+    if(aller){[xh,yh,xb,yb]=[xb,yb,xh,yh];}aller=!aller;
+    const len=Math.hypot(xb-xh,yb-yh);
+    const e2=1/Math.max(1,len);
+    let dx=-1,dy=-1,et=0;
+    for(let u=0;u<=1+e2;u+=e2){
+      const mx=xh+(xb-xh)*u,my=yh+(yb-yh)*u;
+      const isin=mx>marge&&my>marge&&mx<w-marge&&my<h-marge;
+      if(!isin&&et===0)continue;
+      if(isin&&et===0){et=1;}
+      if(!isin&&et===1){if(dx!==-1)lignes.push([dx,dy,xh+(xb-xh)*(u-e2),yh+(yb-yh)*(u-e2)]);dx=-1;break;}
+      const br=brightness(imgData,mx,my);
+      if(br<=sens){if(dx===-1){dx=mx;dy=my;}}
+      else{if(dx!==-1){lignes.push([dx,dy,xh+(xb-xh)*(u-e2),yh+(yb-yh)*(u-e2)]);dx=-1;}}
+    }
+  }
+  return lignes;
+}
+function computeCalques(imgData,w,h,marge){
+  const n=state.nombreDangles,cal=[];
+  for(let i=0;i<n;i++){
+    const t=i/n;
+    const s=state.sensibiliteMax+(state.sensibiliteMin-state.sensibiliteMax)*t;
+    const p=Math.round(state.maxPas+(state.minPas-state.maxPas)*t);
+    const ang=state.angleDepart+t*Math.PI;
+    cal.push({lignes:getLignes(imgData,w,h,marge,ang,s,p),color:COLORS[i%COLORS.length],angle:ang,index:i});
+  }
+  return cal;
+}
+
+// ══ RENDU CANVAS ══
+function paintCanvas(rc){
+  if(!rc)return;
+  const {cal,cvW,cvH,dX,dY,dW,dH,mPx,cadrePx,epaisseurTrait}=rc;
+  ctx.fillStyle='#fff';
+  ctx.fillRect(0,0,cvW,cvH);
+  ctx.save();ctx.translate(dX,dY);ctx.lineCap='round';ctx.lineWidth=epaisseurTrait;
+
+  // ── Ondulation cohérente par ligne ──
+  // Chaque hachure ondule perpendiculairement à la direction du calque.
+  // Les lignes voisines sont déphasées pour créer des ondes parallèles qui "voyagent".
+  const wAmp  = state.waveAmp;
+  const wFreq = state.waveFreq;
+
+  for(let i=0;i<cal.length;i++){
+    if(!layerVisible[i])continue;
+    const {lignes,color,angle}=cal[i];
+    ctx.strokeStyle=state.previewMono ? '#000' : color;
+
+    // Ondulation IDENTIQUE pour toutes les lignes du calque → strictement parallèles
+    // La perturbation est perpendiculaire à la direction des hachures.
+    // On utilise la position le long de la ligne (paramètre t) comme variable de l'onde.
+    // Toutes les lignes ont la même phase → elles ondulent à l'unisson.
+    const perpX = -Math.sin(angle);
+    const perpY =  Math.cos(angle);
+
+    // Référence de longueur fixe = dimension du canvas
+    // → même normalisation pour tous les segments → phases cohérentes
+    const refLen = Math.max(dW, dH);
+
+    for(let j=0; j<lignes.length; j++){
+      const [x1,y1,x2,y2] = lignes[j];
+
+      if(wAmp <= 0){
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+        continue;
+      }
+
+      const ddx = x2-x1, ddy = y2-y1;
+      const seg = Math.hypot(ddx,ddy);
+      if(seg < 1){
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+        continue;
+      }
+
+      const steps = Math.max(4, Math.round(seg / 2));
+      ctx.beginPath();
+      for(let s=0; s<=steps; s++){
+        const t = s / steps;
+        const bx = x1 + ddx*t;
+        const by = y1 + ddy*t;
+        // Enveloppe sin(t×π) : vaut 0 en t=0 et t=1 → extrémités fixes
+        // Ondulation sin(t×2π×freq) : fréquence souhaitée
+        // Produit : ondulation nulle aux deux extrémités du segment
+        // Fréquence spatiale absolue : basée sur la position réelle dans l'espace
+        // → indépendante de la longueur du segment
+        // Enveloppe sin(t×π) : extrémités toujours à zéro
+        const pos      = bx * Math.cos(angle) + by * Math.sin(angle);
+        const envelope = Math.sin(t * Math.PI);
+        const osc      = Math.sin(pos / refLen * Math.PI * 2 * wFreq);
+        const wave     = envelope * osc * wAmp;
+        s === 0
+          ? ctx.moveTo(bx + perpX*wave, by + perpY*wave)
+          : ctx.lineTo(bx + perpX*wave, by + perpY*wave);
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+  if(state.cadreMm>0&&mPx>0){
+    const cw=Math.max(0.5,cadrePx);
+    ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=cw;
+    ctx.strokeRect(dX+cw/2,dY+cw/2,dW-cw,dH-cw);ctx.restore();
+  }
+}
+function repaintCanvas(){
+  if(!renderCtx)return;
+  paintCanvas(renderCtx);
+  legend.querySelectorAll('.cl-row').forEach(row=>{
+    const idx=parseInt(row.dataset.idx);
+    const vis=layerVisible[idx];
+    row.classList.toggle('off',!vis);
+    const eyeBtn=row.querySelector('.eye-btn');
+    if(eyeBtn)eyeBtn.innerHTML=vis?EYE_OPEN:EYE_CLOSED;
+  });
+}
+
+function render(){
+  if(!sourceImage)return;
+  showStatus('Rendu en cours… cropRect=' + (cropRect ? cropRect.map(v=>v.toFixed(2)).join(',') : 'null'));
+  showSpinner(true);
+  for(let i=0;i<12;i++)if(layerVisible[i]===undefined)layerVisible[i]=true;
+  setTimeout(()=>{
+    const areaW=mainEl.clientWidth-40, areaH=mainEl.clientHeight-40;
+
+    // 1. Canvas calé sur les proportions du FORMAT PAPIER (portrait ou paysage)
+    const [pWmm,pHmm]=getPaperMm(state.serie,state.formatNum,state.orientation);
+    const paperRatio=pWmm/pHmm;
+    let cvW,cvH;
+    if(paperRatio>=areaW/areaH){cvW=areaW;cvH=Math.round(areaW/paperRatio);}
+    else{cvH=areaH;cvW=Math.round(areaH*paperRatio);}
+
+    // 2. Marge blanche en px proportionnelle au grand côté du papier
+    const paperMax=Math.max(pWmm,pHmm);
+    const mPx=state.margeBlanchemm>0?Math.round(Math.min(cvW,cvH)*state.margeBlanchemm/paperMax):0;
+    const cadrePx=state.cadreMm>0&&mPx>0?Math.max(1,Math.round(mPx*state.cadreMm/Math.max(state.margeBlanchemm,0.1))):0;
+
+    // 3. Zone totale disponible (intérieure à la marge)
+    const zoneW=cvW-2*mPx, zoneH=cvH-2*mPx;
+    if(zoneW<=10||zoneH<=10){showSpinner(false);return;}
+
+    // 4. Zone cible (sous-format) dans laquelle le dessin doit tenir
+    const [pWmm_r,pHmm_r]=getPaperMm(state.serie,state.formatNum,state.orientation);
+    const [zcWmm,zcHmm]=getZoneCibleMm(pWmm_r,pHmm_r,state.margeBlanchemm);
+    // Convertir la zone cible en px (proportionnel au canvas aperçu)
+    const scaleToCanvas = Math.min(cvW/pWmm_r, cvH/pHmm_r);
+    const zcW = Math.round(zcWmm * scaleToCanvas);
+    const zcH = Math.round(zcHmm * scaleToCanvas);
+
+    // 5. Image en FIT dans la zone cible (ratio de la zone croppée)
+    // Si un crop est actif, le ratio effectif est celui du rectangle cropé
+    const effImgW = cropRect ? cropRect[2]*sourceImage.width  : sourceImage.width;
+    const effImgH = cropRect ? cropRect[3]*sourceImage.height : sourceImage.height;
+    const imgRatio = effImgW / effImgH;
+    const zcRatio=zcW/zcH;
+    let dW,dH;
+    if(imgRatio>=zcRatio){dW=zcW;dH=Math.round(zcW/imgRatio);}
+    else{dH=zcH;dW=Math.round(zcH*imgRatio);}
+
+    // 6. Slack total = zone papier - dessin; justification H et V indépendantes
+    const slackX = zoneW - dW;
+    const slackY = zoneH - dH;
+    function applyJustH(s){
+      if(state.justH==='left')  return 0;
+      if(state.justH==='right') return Math.round(s);
+      return Math.round(s/2);
+    }
+    function applyJustV(s){
+      if(state.justV==='top')    return 0;
+      if(state.justV==='bottom') return Math.round(s);
+      return Math.round(s/2);
+    }
+    const dX = mPx + applyJustH(slackX);
+    const dY = mPx + applyJustV(slackY);
+
+    cv.width=cvW; cv.height=cvH;
+    ctx=cv.getContext('2d'); // réacquérir le contexte après redimensionnement
+    panX=0; panY=0; zoom=1; applyTransform(); // recentrer le viewport
+
+    // 6. Tramage sur la zone dessin
+    const tmp=document.createElement('canvas');
+    tmp.width=dW;tmp.height=dH;
+    // Appliquer le crop si défini
+    if (cropRect) {
+      const [cx,cy,cw,ch] = cropRect;
+      tmp.getContext('2d').drawImage(
+        sourceImage,
+        Math.round(cx*sourceImage.width), Math.round(cy*sourceImage.height),
+        Math.round(cw*sourceImage.width), Math.round(ch*sourceImage.height),
+        0, 0, dW, dH
+      );
+    } else {
+      tmp.getContext('2d').drawImage(sourceImage,0,0,sourceImage.width,sourceImage.height,0,0,dW,dH);
+    }
+    const id=tmp.getContext('2d').getImageData(0,0,dW,dH);
+    applyPreprocess(id);  // ← prétraitement avant tramage
+    tmp.getContext('2d').putImageData(id,0,0);
+    const cal=computeCalques(id,dW,dH,state.marge);
+    lastCalques={
+      cal,srcW:sourceImage.width,srcH:sourceImage.height,
+      pWmm,pHmm,margeBlanchemm:state.margeBlanchemm,
+      cadreMm:state.cadreMm,epaisseurTrait:state.epaisseurTrait,dW,dH,
+    };
+    renderCtx={cal,cvW,cvH,dX,dY,dW,dH,mPx,cadrePx,epaisseurTrait:state.epaisseurTrait};
+    for(let i=0;i<state.nombreDangles;i++)if(layerVisible[i]===undefined)layerVisible[i]=true;
+    paintCanvas(renderCtx);
+    updateLegend(cal);
+    showSpinner(false);
+    const tot=cal.reduce((s,c)=>s+c.lignes.length,0);
+    showStatus(`${tot} lignes · ${pWmm}×${pHmm} mm`);
+  },30);
+}
+function scheduleRender(){clearTimeout(renderTimer);renderTimer=setTimeout(render,320);}
+
+// ══ BUILD SVG ══
+function buildInkscapeSVG(){
+  if(!lastCalques)return null;
+  const {cal,srcW,srcH,margeBlanchemm,cadreMm,epaisseurTrait,dW,dH}=lastCalques;
+  // Toujours lire le format depuis state (peut avoir changé sans nouveau rendu)
+  const [pWmm,pHmm]=getPaperMm(state.serie,state.formatNum,state.orientation);
+
+  // Zone disponible (intérieure à la marge blanche)
+  const zoneWmm=pWmm-2*margeBlanchemm;
+  const zoneHmm=pHmm-2*margeBlanchemm;
+
+  // Zone cible (sous-format) dans laquelle le dessin doit tenir
+  const [zcWmm, zcHmm] = getZoneCibleMm(pWmm, pHmm, margeBlanchemm);
+
+  // Dimensions du dessin : FIT dans la zone cible, ratio source préservé
+  // Tenir compte du crop pour le ratio effectif
+  const effW = cropRect ? cropRect[2]*srcW : srcW;
+  const effH = cropRect ? cropRect[3]*srcH : srcH;
+  const imgRatio = effW / effH;
+  const zcRatio  = zcWmm / zcHmm;
+  let drawWmm, drawHmm;
+  if (imgRatio >= zcRatio) {
+    drawWmm = zcWmm;
+    drawHmm = zcWmm / imgRatio;
+  } else {
+    drawHmm = zcHmm;
+    drawWmm = zcHmm * imgRatio;
+  }
+
+  // Slack = espace entre le dessin et les bords de la zone papier (hors marge)
+  const slackX = Math.max(0, zoneWmm - drawWmm);
+  const slackY = Math.max(0, zoneHmm - drawHmm);
+
+  // Justification H et V indépendantes
+  function jH(s){ if(state.justH==='left') return 0; if(state.justH==='right') return s; return s/2; }
+  function jV(s){ if(state.justV==='top')  return 0; if(state.justV==='bottom') return s; return s/2; }
+  const offXmm = margeBlanchemm + jH(slackX);
+  const offYmm = margeBlanchemm + jV(slackY);
+
+
+  // Conversion px→mm
+  const sX=drawWmm/dW, sY=drawHmm/dH;
+  const trMm=(epaisseurTrait*(sX+sY)/2).toFixed(4);
+  const W=pWmm.toFixed(3),H=pHmm.toFixed(3);
+  const p2x=px=>(offXmm+px*sX).toFixed(4);
+  const p2y=py=>(offYmm+py*sY).toFixed(4);
+
+  let svg=`<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+  xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+  xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.0.dtd"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}" version="1.1" id="svg-trame">
+  <sodipodi:namedview id="namedview1" units="mm" document-units="mm"
+    inkscape:document-units="mm" showgrid="false"
+    pagecolor="#ffffff" bordercolor="#666666" borderopacity="1.0"/>
+  <title>Trame ${state.serie}${state.formatNum} — ${pWmm}×${pHmm}mm</title>\n`;
+
+  svg+=`  <g inkscape:groupmode="layer" inkscape:label="Fond" id="layer-fond">
+    <rect x="0" y="0" width="${W}" height="${H}" fill="white" stroke="none"/>
+  </g>\n`;
+
+  for(let i=0;i<cal.length;i++){
+    const cal_i=i; // pour la phase ondulation
+    const {lignes,color,angle}=cal[i];
+    const deg=Math.round(angle*180/Math.PI)%180;
+    const vis=layerVisible[i];
+    svg+=`  <g inkscape:groupmode="layer" inkscape:label="Trame ${i+1} — ${deg}°"
+    id="layer-trame-${i+1}" stroke="${color}" stroke-width="${trMm}" stroke-linecap="round" fill="none"${vis?'':' display="none"'}>\n`;
+    for(let lignesIdx=0; lignesIdx<lignes.length; lignesIdx++){
+      const [x1,y1,x2,y2] = lignes[lignesIdx];
+      if(state.waveAmp <= 0){
+        svg+=`    <line x1="${p2x(x1)}" y1="${p2y(y1)}" x2="${p2x(x2)}" y2="${p2y(y2)}"/>\n`;
+      } else {
+        // Chemin ondulé en mm — même logique que le rendu canvas
+        const mx1=parseFloat(p2x(x1)),my1=parseFloat(p2y(y1));
+        const mx2=parseFloat(p2x(x2)),my2=parseFloat(p2y(y2));
+        const mdx=mx2-mx1,mdy=my2-my1;
+        const mlen=Math.hypot(mdx,mdy);
+        if(mlen<0.1){svg+=`    <line x1="${p2x(x1)}" y1="${p2y(y1)}" x2="${p2x(x2)}" y2="${p2y(y2)}"/>\n`;continue;}
+        // Perpendiculaire à l'angle du calque (en mm)
+        const mPerpX = -Math.sin(angle);
+        const mPerpY =  Math.cos(angle);
+        const mamp = state.waveAmp * ((sX+sY)/2); // amplitude en mm
+        const linePhase = lignesIdx * 0.4;
+        const steps = Math.max(4, Math.round(mlen/0.5));
+        let d=`M ${mx1.toFixed(3)} ${my1.toFixed(3)}`;
+        for(let s=1;s<=steps;s++){
+          const t=s/steps;
+          const bx=mx1+mdx*t, by=my1+mdy*t;
+          const pos      = bx * Math.cos(angle) + by * Math.sin(angle);
+          const envelope = Math.sin(t * Math.PI);
+          const osc      = Math.sin(pos / (Math.max(dW,dH) * ((sX+sY)/2)) * Math.PI * 2 * state.waveFreq);
+          const wave     = envelope * osc * mamp;
+          d+=` L ${(bx+mPerpX*wave).toFixed(3)} ${(by+mPerpY*wave).toFixed(3)}`;
+        }
+        svg+=`    <path d="${d}" fill="none"/>\n`;
+      }
+    }
+    svg+=`  </g>\n`;
+  }
+
+  // Cadre autour de la zone dessinée (respecte justification)
+  if(cadreMm>0){
+    const half=cadreMm/2;
+    const rx=(offXmm+half).toFixed(4),ry=(offYmm+half).toFixed(4);
+    const rw=(drawWmm-cadreMm).toFixed(4),rh=(drawHmm-cadreMm).toFixed(4);
+    svg+=`  <g inkscape:groupmode="layer" inkscape:label="Cadre" id="layer-cadre">
+    <rect x="${rx}" y="${ry}" width="${rw}" height="${rh}"
+      stroke="black" stroke-width="${cadreMm.toFixed(4)}" stroke-linecap="square" fill="none"/>
+  </g>\n`;
+  }
+
+  svg+=`</svg>`;
+  return svg;
+}
+
+document.getElementById('btn-export').addEventListener('click',()=>{
+  const svg=buildInkscapeSVG();
+  if(!svg)return showStatus('Chargez une image d\'abord');
+  const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const baseName = sourceFileName ? sourceFileName+'_' : '';
+  const fn=`${baseName}trame_${state.serie}${state.formatNum}_${state.orientation==='landscape'?'pay':'por'}.svg`;
+  a.href=url;a.download=fn;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showStatus(`SVG exporté : ${fn}`);
+});
+
+document.getElementById('btn-export-png').addEventListener('click',()=>{
+  if(!cv.width||!cv.height) return showStatus('Chargez une image d\'abord');
+  const fname=(sourceFileName?sourceFileName+'_':'')+
+    `trame_${state.serie}${state.formatNum}_${state.orientation==='landscape'?'pay':'por'}.png`;
+  cv.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showStatus(`PNG exporté : ${fname}`);
+  },'image/png');
+});
+
+// ══ HELPERS ══
+function showSpinner(v){spinner.classList.toggle('visible',v);}
+let stTimer;
+function showStatus(msg){
+  statusEl.textContent=msg;statusEl.classList.add('show');
+  clearTimeout(stTimer);stTimer=setTimeout(()=>statusEl.classList.remove('show'),3500);
+}
+
+// ══ JSON EXPORT / IMPORT PARAMÈTRES ══
+const PRESET_KEYS_JSON = [
+  'nombreDangles','sensibiliteMin','sensibiliteMax',
+  'minPas','maxPas','angleDepart','epaisseurTrait'
+];
+
+function getParamsAsJSON() {
+  const p = {};
+  for (const k of PRESET_KEYS_JSON) p[k] = state[k];
+  return JSON.stringify(p, null, 2);
+}
+
+function applyParamsFromJSON(json) {
+  let p;
+  try { p = JSON.parse(json); } catch(e) { showStatus('JSON invalide'); return; }
+
+  const sliderMap = {
+    nombreDangles: {id:'s-calques', valId:'v-calques', fmt:v=>Math.round(v)+'',  slVal:v=>v},
+    sensibiliteMin:{id:'s-smin',   valId:'v-smin',   fmt:v=>v.toFixed(3),       slVal:v=>v},
+    sensibiliteMax:{id:'s-smax',   valId:'v-smax',   fmt:v=>v.toFixed(3),       slVal:v=>v},
+    minPas:        {id:'s-emin',   valId:'v-emin',   fmt:v=>Math.round(v)+'',   slVal:v=>v},
+    maxPas:        {id:'s-emax',   valId:'v-emax',   fmt:v=>Math.round(v)+'',   slVal:v=>v},
+    angleDepart:   {id:'s-angle',  valId:'v-angle',  fmt:v=>Math.round(v*180/Math.PI)+'°', slVal:v=>Math.round(v*180/Math.PI)},
+    epaisseurTrait:{id:'s-weight', valId:'v-weight', fmt:v=>v.toFixed(1),       slVal:v=>v},
+  };
+
+  for (const [k, cfg] of Object.entries(sliderMap)) {
+    if (p[k] === undefined) continue;
+    state[k] = p[k];
+    const sl = document.getElementById(cfg.id);
+    if (sl) sl.value = cfg.slVal(p[k]);
+    const vl = document.getElementById(cfg.valId);
+    if (vl) vl.textContent = cfg.fmt(p[k]);
+  }
+  scheduleRender();
+  showStatus('Paramètres chargés');
+}
+
+document.getElementById('btn-save-json').addEventListener('click', () => {
+  const json = getParamsAsJSON();
+  const blob = new Blob([json], {type: 'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const fname = (sourceFileName ? sourceFileName + '_' : '') + 'params_trame.json';
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showStatus('Paramètres enregistrés : ' + fname);
+});
+
+document.getElementById('btn-load-json').addEventListener('click', () => {
+  document.getElementById('json-input').click();
+});
+
+document.getElementById('json-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => applyParamsFromJSON(ev.target.result);
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// Synchroniser les selects HTML avec l'état (potentiellement chargé depuis localStorage)
+(()=>{
+  const ss = document.getElementById('s-serie');
+  const sf = document.getElementById('s-format');
+  const so = document.getElementById('s-orient');
+  if(ss) ss.value = state.serie;
+  if(sf) sf.value = state.formatNum;
+  if(so) so.value = state.orientation;
+  updateFormatLabel();
+})();
+
+// ── PLEIN ÉCRAN ──
+const btnFs  = document.getElementById('btn-fullscreen');
+const fsIcon = document.getElementById('fs-icon');
+const fsLabel= document.getElementById('fs-label');
+
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+}
+
+function enterFullscreen() {
+  const el = document.documentElement;
+  if (el.requestFullscreen)            el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  else if (el.mozRequestFullScreen)    el.mozRequestFullScreen();
+}
+
+function exitFullscreen() {
+  if (document.exitFullscreen)            document.exitFullscreen();
+  else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  else if (document.mozCancelFullScreen)  document.mozCancelFullScreen();
+}
+
+function updateFsBtn() {
+  const isFs = isFullscreen();
+  btnFs.classList.toggle('active', isFs);
+  btnFs.classList.toggle('pulse', !isFs);
+  fsIcon.textContent  = isFs ? '✕' : '⛶';
+  fsLabel.textContent = isFs ? 'Quitter plein écran' : 'Plein écran';
+}
+
+btnFs && btnFs.addEventListener('click', () => {
+  isFullscreen() ? exitFullscreen() : enterFullscreen();
+});
+
+document.addEventListener('fullscreenchange',       updateFsBtn);
+document.addEventListener('webkitfullscreenchange', updateFsBtn);
+document.addEventListener('mozfullscreenchange',    updateFsBtn);
+
+updateFsBtn(); // init
+
+// Init
+updateLegend(null);
+
+})();
+</script>
+</body>
+</html>
