@@ -60,7 +60,7 @@ Aucune installation requise. Le logiciel fonctionne entièrement dans le navigat
 ## Crédits
 
 **Développement** : Martial Rossignol  
-**Algorithme de tramage par lignes** : basé sur les travaux de [Jean-Noël Lafargue](http://lafargue.eu)
+**Algorithme de tramage par lignes** : basé sur les travaux de [Jean-Noël Lafargue](https://synchise.com/outils/trames/)
 
 ---
 
